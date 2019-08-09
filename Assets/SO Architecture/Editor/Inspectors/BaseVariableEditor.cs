@@ -12,20 +12,26 @@ public class BaseVariableEditor : Editor
     protected bool IsClamped { get { return Target is IClampedVariable; } }
 
     private SerializedProperty _valueProperty;
+    private SerializedProperty _runtimeValueProperty;
     private SerializedProperty _developerDescription;
     private SerializedProperty _readOnly;
+    private SerializedProperty _preserveInitValue;
     private SerializedProperty _raiseWarning;
     private SerializedProperty _minValueProperty;
     private SerializedProperty _maxValueProperty;
     private AnimBool _raiseWarningAnimation;
 
-    private const string READONLY_TOOLTIP = "Should this value be changable during runtime? Will still be editable in the inspector regardless";
+    private bool _valueChangedInInspector;
 
+    private const string READONLY_TOOLTIP = "Should this value be changable during runtime? Will still be editable in the inspector regardless";
+    
     protected virtual void OnEnable()
     {
         _valueProperty = serializedObject.FindProperty("_value");
+        _runtimeValueProperty = serializedObject.FindProperty("_runtimeValue");
         _developerDescription = serializedObject.FindProperty("DeveloperDescription");
         _readOnly = serializedObject.FindProperty("_readOnly");
+        _preserveInitValue = serializedObject.FindProperty ("_preserveInitValue");
         _raiseWarning = serializedObject.FindProperty("_raiseWarning");
 
         if (IsClamped)
@@ -41,22 +47,29 @@ public class BaseVariableEditor : Editor
     {
         serializedObject.Update();
         
-        DrawValue();
+        DrawValue(Target.PreserveInitValue && Application.isPlaying ? _runtimeValueProperty : _valueProperty);
         DrawClampedFields();
-        DrawReadonlyField();
+        DrawReadonlyField ();
+        DrawPreserveInitValueField ();
         DrawDeveloperDescription();
     }
-    protected void DrawValue()
+    protected void DrawValue(SerializedProperty valueProperty)
     {
+        if (_valueChangedInInspector) {
+            _valueChangedInInspector = false;
+            Target.Raise ();
+        }
+
         using (var scope = new EditorGUI.ChangeCheckScope())
         {
             string content = "Cannot display value. No PropertyDrawer for (" + Target.Type + ") [" + Target.ToString() + "]";
-            GenericPropertyDrawer.DrawPropertyDrawer(Target.Type, _valueProperty, new GUIContent(content, content));
+            GenericPropertyDrawer.DrawPropertyDrawer(Target.Type, valueProperty, new GUIContent(content, content));
 
             if (scope.changed)
             {
                 // Value changed, raise events
-                Target.Raise();
+                //Target.Raise();
+                _valueChangedInInspector = true;
             }
         }
     }
@@ -88,6 +101,10 @@ public class BaseVariableEditor : Editor
                 EditorGUI.indentLevel--;
             }
         }
+    }
+    protected void DrawPreserveInitValueField ()
+    {
+        EditorGUILayout.PropertyField (_preserveInitValue);
     }
     protected void DrawDeveloperDescription()
     {

@@ -14,7 +14,11 @@ public class ImageFillSetter : MonoBehaviour
 
     private void Update()
     {
-        _imageTarget.fillAmount = Mathf.Clamp01(_variable.Value / _maxValue.Value);
+        //_imageTarget.fillAmount = Mathf.Clamp01(_variable.Value / _maxValue.Value);
     }
-
+    private void Start () {
+        _variable.AddListener (delegate {
+            _imageTarget.fillAmount = Mathf.Clamp01 (_variable.Value / _maxValue.Value);
+        });
+    }
 }
